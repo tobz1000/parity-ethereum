@@ -44,7 +44,27 @@ use client::{
 	Call, BlockProducer, SealedBlockImporter, ChainNotify, EngineInfo,
 	ClientConfig, NewBlocks, ChainRoute, ChainMessageType, bad_blocks, ClientIoMessage,
 };
-use client_traits::{BlockInfo, ScheduleInfo, StateClient, BlockChainReset, Nonce, Balance, ChainInfo, TransactionInfo, ImportBlock, AccountData, BlockChain as BlockChainTrait, BlockChainClient, IoClient, BadBlocks, ProvingBlockChainClient, StateOrBlock, ExportBlocks, DataFormat, ImportBlocks};
+use client_traits::{
+	BlockInfo,
+	ScheduleInfo,
+	StateClient,
+	BlockChainReset,
+	Nonce,
+	Balance,
+	ChainInfo,
+	TransactionInfo,
+	ImportBlock,
+	AccountData,
+	BlockChain as BlockChainTrait,
+	BlockChainClient,
+	IoClient,
+	BadBlocks,
+	ProvingBlockChainClient,
+	StateOrBlock,
+	ExportBlocks,
+	DataFormat,
+	ImportBlocks
+};
 use engine::Engine;
 use machine::{
 	executed::Executed,
