@@ -16,7 +16,6 @@
 
 use std::sync::{Arc, Weak};
 use bytes::Bytes;
-use call_contract::RegistryInfo;
 use common_types::{
 	ids::BlockId,
 	transaction::{Transaction, SignedTransaction, Action},
@@ -27,6 +26,7 @@ use client_traits::{ChainInfo, Nonce};
 use ethcore::miner::{Miner, MinerService};
 use sync::SyncProvider;
 use helpers::{get_confirmed_block_hash, REQUEST_CONFIRMATIONS_REQUIRED};
+use registrar::RegistrarClient;
 use {Error, NodeKeyPair, ContractAddress};
 
 #[derive(Clone)]
@@ -98,10 +98,12 @@ impl TrustedClient {
 	pub fn read_contract_address(&self, registry_name: String, address: &ContractAddress) -> Option<Address> {
 		match *address {
 			ContractAddress::Address(ref address) => Some(address.clone()),
-			ContractAddress::Registry => self.get().and_then(|client|
-				get_confirmed_block_hash(&*client, REQUEST_CONFIRMATIONS_REQUIRED)
-					.and_then(|block| client.registry_address(registry_name, BlockId::Hash(block)))
-			),
+			ContractAddress::Registry => {
+				let block = self.get()?
+					.get_confirmed_block_hash(&*client, REQUEST_CONFIRMATIONS_REQUIRED)?;
+
+				client.get_registry_address(registry_name, BlockId::Hash(block)).ok()
+			}
 		}
 	}
 }

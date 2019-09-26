@@ -23,10 +23,10 @@ use std::path::PathBuf;
 
 use hash::keccak_buffer;
 use fetch::{self, Fetch};
-use futures::{Future, IntoFuture};
 use parity_runtime::Executor;
 use urlhint::{URLHintContract, URLHint, URLHintResult};
-use registrar::{RegistrarClient, Asynchronous};
+use call_contract::CallContract;
+use registrar::RegistrarClient;
 use ethereum_types::H256;
 
 /// API for fetching by hash.
@@ -107,16 +107,19 @@ fn validate_hash(path: PathBuf, hash: H256, body: fetch::BodyReader) -> Result<P
 }
 
 /// Default Hash-fetching client using on-chain contract to resolve hashes to URLs.
-pub struct Client<F: Fetch + 'static = fetch::Client> {
-	contract: URLHintContract,
+pub struct Client<F: Fetch + 'static, C: CallContract + RegistrarClient> {
+	contract: URLHintContract<C>,
 	fetch: F,
 	executor: Executor,
 	random_path: Arc<dyn Fn() -> PathBuf + Sync + Send>,
 }
 
-impl<F: Fetch + 'static> Client<F> {
+impl<F: Fetch + 'static, C: CallContract + RegistrarClient> Client<F, C> {
 	/// Creates new instance of the `Client` given on-chain contract client, fetch service and task runner.
-	pub fn with_fetch(contract: Arc<dyn RegistrarClient<Call=Asynchronous>>, fetch: F, executor: Executor) -> Self {
+	pub fn with_fetch<C>(contract: Arc<C>, fetch: F, executor: Executor) -> Self
+	where
+		C: CallContract + RegistrarClient
+	{
 		Client {
 			contract: URLHintContract::new(contract),
 			fetch: fetch,
@@ -126,7 +129,7 @@ impl<F: Fetch + 'static> Client<F> {
 	}
 }
 
-impl<F: Fetch + 'static> HashFetch for Client<F> {
+impl<F: Fetch + 'static, C: CallContract + RegistrarClient> HashFetch for Client<F, C> {
 	fn fetch(&self, hash: H256, abort: fetch::Abort, on_done: Box<dyn Fn(Result<PathBuf, Error>) + Send>) {
 		debug!(target: "fetch", "Fetching: {:?}", hash);
 

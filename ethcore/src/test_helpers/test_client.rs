@@ -63,7 +63,7 @@ use types::{
 use vm::{Schedule, LastHashes};
 
 use block::{OpenBlock, SealedBlock, ClosedBlock};
-use call_contract::{CallContract, RegistryInfo};
+use call_contract::CallContract;
 use client::{
 	ReopenBlock, PrepareOpenBlock, ImportSealedBlock, BroadcastProposalBlock, Call,
 	EngineInfo, BlockProducer, SealedBlockImporter,
@@ -543,9 +543,12 @@ impl TransactionInfo for TestBlockChainClient {
 
 impl BlockChain for TestBlockChainClient {}
 
-impl RegistryInfo for TestBlockChainClient {
-	fn registry_address(&self, _name: String, _block: BlockId) -> Option<Address> { None }
-}
+// impl RegistrarClient for TestBlockChainClient {
+// 	// TODO figure out best value to use here.
+// 	fn registrar_address(&self) -> Result<Address, String> { Err("no address".to_owned()) }
+
+// 	// TODO override `get_registry_address`?
+// }
 
 impl ImportBlock for TestBlockChainClient {
 	fn import_block(&self, unverified: Unverified) -> EthcoreResult<H256> {

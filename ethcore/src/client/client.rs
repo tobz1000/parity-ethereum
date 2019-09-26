@@ -50,7 +50,8 @@ use blockchain::{
 	TransactionAddress,
 	TreeRoute
 };
-use call_contract::{CallContract, RegistryInfo};
+use call_contract::CallContract;
+use registrar::RegistrarClient;
 use client::{
 	bad_blocks, BlockProducer, BroadcastProposalBlock, Call,
 	ClientConfig, EngineInfo, ImportSealedBlock, PrepareOpenBlock,
@@ -1413,19 +1414,10 @@ impl TransactionInfo for Client {
 
 impl BlockChainTrait for Client {}
 
-impl RegistryInfo for Client {
-	fn registry_address(&self, name: String, block: BlockId) -> Option<Address> {
-		use ethabi::FunctionOutputDecoder;
-
-		let address = self.registrar_address?;
-
-		let (data, decoder) = registry::functions::get_address::call(keccak(name.as_bytes()), "A");
-		let value = decoder.decode(&self.call_contract(block, address, data).ok()?).ok()?;
-		if value.is_zero() {
-			None
-		} else {
-			Some(value)
-		}
+impl RegistrarClient for Client {
+	/// Get registrar address
+	fn registrar_address(&self) -> Result<Address, String> {
+		self.registrar_address().ok_or_else(|| "Registrar not defined.".into())
 	}
 }
 

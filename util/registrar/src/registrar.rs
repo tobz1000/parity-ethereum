@@ -14,59 +14,41 @@
 // You should have received a copy of the GNU General Public License
 // along with Parity Ethereum.  If not, see <http://www.gnu.org/licenses/>.
 
-use futures::{Future, future, IntoFuture};
-use ethabi::{Address, Bytes};
-use std::sync::Arc;
+use call_contract::CallContract;
+use ethabi::Address;
 use keccak_hash::keccak;
+use types::ids::BlockId;
 
 use_contract!(registrar, "res/registrar.json");
 
 // Maps a domain name to an Ethereum address
 const DNS_A_RECORD: &'static str = "A";
 
-pub type Asynchronous = Box<dyn Future<Item=Bytes, Error=String> + Send>;
-pub type Synchronous = Result<Bytes, String>;
-
-/// Registrar is dedicated interface to access the registrar contract
-/// which in turn generates an address when a client requests one
-pub struct Registrar {
-	client: Arc<dyn RegistrarClient<Call=Asynchronous>>,
-}
-
-impl Registrar {
-	/// Registrar constructor
-	pub fn new(client: Arc<dyn RegistrarClient<Call=Asynchronous>>) -> Self {
-		Self {
-			client: client,
-		}
-	}
-
-	/// Generate an address for the given key
-	pub fn get_address<'a>(&self, key: &'a str) -> Box<dyn Future<Item = Address, Error = String> + Send> {
-		// Address of the registrar itself
-		let registrar_address = match self.client.registrar_address() {
-			Ok(a) => a,
-			Err(e) => return Box::new(future::err(e)),
-		};
-
-		let hashed_key: [u8; 32] = keccak(key).into();
-		let id = registrar::functions::get_address::encode_input(hashed_key, DNS_A_RECORD);
-
-		let future = self.client.call_contract(registrar_address, id)
-			.and_then(move |address| registrar::functions::get_address::decode_output(&address).map_err(|e| e.to_string()));
-
-		Box::new(future)
-	}
-}
-
 /// Registrar contract interface
 /// Should execute transaction using current blockchain state.
-pub trait RegistrarClient: Send + Sync {
-	/// Specifies synchronous or asynchronous communication
-	type Call: IntoFuture<Item=Bytes, Error=String>;
-
+pub trait RegistrarClient: CallContract {
 	/// Get registrar address
 	fn registrar_address(&self) -> Result<Address, String>;
-	/// Call Contract
-	fn call_contract(&self, address: Address, data: Bytes) -> Self::Call;
+
+	fn get_registry_address(&self, name: &str, block: BlockId) -> Result<Option<Address>, String> {
+		use ethabi::FunctionOutputDecoder;
+
+		let registrar_address = self.registrar_address()?;
+		let hashed_name = keccak(name.as_bytes());
+		let (encoded_input, decoder) = registrar::functions::get_address::call(
+			hashed_name,
+			DNS_A_RECORD
+		);
+		let encoded_address = self.call_contract(block, registrar_address, encoded_input)?;
+		let address = decoder.decode(&encoded_address).map_err(|e| e.to_string())?;
+
+		// TODO - should zero-address be None (w/ return type Result<Option<Bytes>, String>)?
+		// Relevant to service_transaction_check::refresh_cache and UrlHintContract::Resolve
+
+		if !address.is_zero() {
+			Ok(Some(address))
+		} else {
+			Ok(None)
+		}
+	}
 }

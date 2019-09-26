@@ -65,7 +65,7 @@ use user_defaults::UserDefaults;
 use ipfs;
 use jsonrpc_core;
 use modules;
-use registrar::{RegistrarClient, Asynchronous};
+use registrar::RegistrarClient;
 use rpc;
 use rpc_apis;
 use secretstore;
@@ -687,29 +687,13 @@ fn execute_impl<Cr, Rr>(cmd: RunCmd, logger: Arc<RotatingLogger>, on_client_rq: 
 		chain_notify.start();
 	}
 
-	let contract_client = {
-		struct FullRegistrar { client: Arc<Client> }
-		impl RegistrarClient for FullRegistrar {
-			type Call = Asynchronous;
-			fn registrar_address(&self) -> Result<Address, String> {
-				self.client.registrar_address()
-					.ok_or_else(|| "Registrar not defined.".into())
-			}
-			fn call_contract(&self, address: Address, data: Bytes) -> Self::Call {
-				Box::new(self.client.call_contract(BlockId::Latest, address, data).into_future())
-			}
-		}
-
-		Arc::new(FullRegistrar { client: client.clone() })
-	};
-
 	// the updater service
 	let updater_fetch = fetch.clone();
 	let updater = Updater::new(
 		&Arc::downgrade(&(service.client() as Arc<dyn BlockChainClient>)),
 		&Arc::downgrade(&sync_provider),
 		update_policy,
-		hash_fetch::Client::with_fetch(contract_client.clone(), updater_fetch, runtime.executor())
+		hash_fetch::Client::with_fetch(client.clone(), updater_fetch, runtime.executor())
 	);
 	service.add_notify(updater.clone());
 

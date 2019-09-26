@@ -106,7 +106,7 @@ pub trait Parity {
 	#[rpc(name = "parity_phraseToAddress")]
 	fn phrase_to_address(&self, String) -> Result<H160>;
 
-	/// Returns the value of the registrar for this network.
+	/// Returns the value of the registrar for this network.\
 	#[rpc(name = "parity_registryAddress")]
 	fn registry_address(&self) -> Result<Option<H160>>;
 
